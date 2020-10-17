@@ -1,0 +1,97 @@
+---
+title: "Choropleth"
+output: html_document 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### Get Covid-19 statistics from the city of  Massachusetts: https://www.mass.gov/doc/covid-19-cases-in-massachusetts-as-of-april-13-2020/download .Then, design a Choropleth map and visualize (number of confirmed cases or percentage of positive tests) on the map of Boston or MA.
+
+##### Installing the required packages
+
+```{r warning=FALSE,message=FALSE}
+#required library
+library(ggplot2)
+library(ggmap)
+library(tidyverse)
+library(dplyr)
+library(rgdal)
+library(leaflet)
+library(htmltools)
+
+```
+
+##### First part of the program focuses on getting the longitude and latitude, for each county .This is done by using geocode. **Inorder to use Geocode you need to register and get an API for google maps.
+
+##### Program to add Geocode to your Dataset
+```{r warning=FALSE,message=FALSE}
+#Reading csv data regarding COVID- 19 information in massachusetts
+mapData = read_csv("MyData3.csv")
+
+#Preparing the address section to generate the geocode
+mapData$address = paste(mapData$CTYNAME,mapData$STNAME)
+
+#API for google maps  
+register_google(key = "Enter the Api Key")
+
+#Generation longitude and latitude for each address
+geocodes <- geocode(mapData$address,source = "google")
+mapData$lon <- geocodes$lon
+mapData$lat <- geocodes$lat
+```
+
+##### Inorder to run this section of the program you require shapefile,Dataset with longitude and latitude
+
+```{r warning=FALSE,message=FALSE}
+#required library
+library(ggplot2)
+library(ggmap)
+library(tidyverse)
+library(dplyr)
+library(rgdal)
+library(leaflet)
+library(htmltools)
+
+#Reading the Dataset
+mapData = read_csv("/Users/ayshazenabkenza/Desktop/Web_Analytics/CourseWork/Choropleth/MyData3.csv")
+
+#Reading shapefile for Massachusetts
+mapshape <- readOGR("/Users/ayshazenabkenza/Desktop/Web_Analytics/CourseWork/Choropleth/Massachusetts_Counties-shp/Massachusetts_Counties.shp")
+
+#Ordering the county name in the data according to shapefile
+mapData <- mapData[order(match(mapshape$COUNTY,mapData$CTYNAME)),]
+mapData <- mapData[complete.cases(mapData),]
+
+#Preparing the palette according to Confirmed Cases
+bin <- c(50,100,1000,5000,10000,15000,20000,30000)
+mappal <- colorBin("Reds",domain = mapData$`NUMBER OF CONFIRMED CASES`,bins = bin)
+popup1 <- paste("<span style='color: #7f0000'><strong>Coronavirus Disease 2019 (COVID-19) Cases in MA</strong></span>",
+                "<br><span style='color: salmon;'><strong>COUNTY: </strong></span>", 
+                 mapData$CTYNAME, 
+                 "<br><span style='color: salmon;'><strong>NUMBER OF CONFIRMED CASES: </strong></span>", 
+                 mapData$`NUMBER OF CONFIRMED CASES`
+)
+
+#Plotting the map
+map <- leaflet()%>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas)%>%
+  setView(-71,42,zoom = 8)%>%
+  addPolygons(data = mapshape,
+              color = "white",
+              weight = 1,
+              smoothFactor = 1,
+              fillOpacity = 0.8,
+              fillColor = mappal(mapData$`NUMBER OF CONFIRMED CASES`),
+              label = lapply(popup1, HTML))%>%
+  addLegend(title = "Total Cases per County",pal = mappal,
+            values = mapData$`NUMBER OF CONFIRMED CASES`,
+            opacity = 0.7,
+            position = "topright")
+
+map
+
+```
+
+
